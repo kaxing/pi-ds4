@@ -1,14 +1,17 @@
 {
   "name": "pi-ds4",
-  "version": "0.1.0",
-  "description": "Pi provider extension for local ds4.c DeepSeek V4 Flash inference.",
+  "version": "0.2.0",
+  "description": "Pi provider extension for local ds4.c DeepSeek V4 Flash inference (audreyt fork: cyberneurova abliterated GGUF + audreyt/ds4 main with Q8_0 loader + ivanfioravanti M5 PR).",
   "type": "module",
   "license": "MIT",
   "keywords": [
     "pi-package",
     "pi-extension",
     "ds4",
-    "deepseek"
+    "deepseek",
+    "cyberneurova",
+    "abliterated",
+    "m5"
   ],
   "pi": {
     "extensions": [
@@ -19,6 +22,8 @@
     "index.ts",
     "ds4-watchdog.sh",
     "install-pi-extension-local.sh",
+    "prepare_model.sh",
+    "harmonize_gguf.py",
     "README.md",
     "LICENSE"
   ],

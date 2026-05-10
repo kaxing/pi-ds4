@@ -36,8 +36,19 @@ const STATE_FILE = join(DS4_DIR, "server.json");
 const LOG_FILE = join(DS4_DIR, "log");
 const LEASE_FILE = join(CLIENT_DIR, `${process.pid}.json`);
 
-const SUPPORT_REPO = process.env.DS4_SUPPORT_REPO ?? "https://github.com/antirez/ds4";
+// audreyt/pi-ds4 fork: pull the audreyt/ds4 main branch by default, which
+// already contains the support-q8_0-token-embd loader PR + ivanfioravanti's
+// PR #15 (Metal 4 / M5 prefill optimizations).  Override with DS4_SUPPORT_REPO
+// / DS4_SUPPORT_BRANCH if you want a different ds4 build.
+const SUPPORT_REPO = process.env.DS4_SUPPORT_REPO ?? "https://github.com/audreyt/ds4";
 const SUPPORT_BRANCH = process.env.DS4_SUPPORT_BRANCH ?? "main";
+
+const PREPARE_SCRIPT = process.env.DS4_PREPARE_SCRIPT
+	? resolve(process.env.DS4_PREPARE_SCRIPT)
+	: join(EXTENSION_DIR, "prepare_model.sh");
+const HARMONIZE_SCRIPT = process.env.DS4_HARMONIZE_SCRIPT
+	? resolve(process.env.DS4_HARMONIZE_SCRIPT)
+	: join(EXTENSION_DIR, "harmonize_gguf.py");
 
 const BASE_URL = "http://127.0.0.1:8000";
 const API_BASE_URL = `${BASE_URL}/v1`;
@@ -788,10 +799,14 @@ async function ensureBuilt(runtimeDir: string, onStatus?: StatusCallback): Promi
 
 async function ensureModel(runtimeDir: string, onStatus?: StatusCallback): Promise<void> {
 	const quant = selectedModelQuant();
-	onStatus?.(`ensuring ${quant} model`);
-	await runLogged("./download_model.sh", [quant], runtimeDir, `download ${quant} model`, {
+	onStatus?.(`ensuring ${quant} model (cyberneurova abliterated, harmonized for ds4)`);
+	// audreyt/pi-ds4 fork: replace the upstream download_model.sh flow with our
+	// prepare script that downloads the cyberneurova abliterated GGUF and
+	// harmonizes its small tensors to F16 so PR #15's MPP F16 prefill works
+	// correctly on M5.  Idempotent: skips download/harmonize if already done.
+	await runLogged(PREPARE_SCRIPT, [quant, HARMONIZE_SCRIPT], runtimeDir, `prepare ${quant} model`, {
 		onStatus,
-		progressPrefix: `ensuring ${quant} model`,
+		progressPrefix: `preparing ${quant} model`,
 	});
 }
 
