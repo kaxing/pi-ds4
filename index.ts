@@ -43,9 +43,9 @@ const LEASE_FILE = join(CLIENT_DIR, `${process.pid}.json`);
 const SUPPORT_REPO = process.env.DS4_SUPPORT_REPO ?? "https://github.com/audreyt/ds4";
 const SUPPORT_BRANCH = process.env.DS4_SUPPORT_BRANCH ?? "main";
 
-const PREPARE_SCRIPT = process.env.DS4_PREPARE_SCRIPT
-	? resolve(process.env.DS4_PREPARE_SCRIPT)
-	: join(EXTENSION_DIR, "prepare_model.sh");
+const DOWNLOAD_SCRIPT = process.env.DS4_DOWNLOAD_SCRIPT
+	? resolve(process.env.DS4_DOWNLOAD_SCRIPT)
+	: join(EXTENSION_DIR, "download_model.sh");
 
 const BASE_URL = "http://127.0.0.1:8000";
 const API_BASE_URL = `${BASE_URL}/v1`;
@@ -797,13 +797,13 @@ async function ensureBuilt(runtimeDir: string, onStatus?: StatusCallback): Promi
 async function ensureModel(runtimeDir: string, onStatus?: StatusCallback): Promise<void> {
 	const quant = selectedModelQuant();
 	onStatus?.(`ensuring ${quant} model (cyberneurova abliterated, unmodified)`);
-	// audreyt/pi-ds4 fork: replace the upstream download_model.sh flow with our
-	// prepare script that downloads the cyberneurova abliterated GGUF directly
-	// (no harmonization needed - audreyt/ds4 main accepts the unmodified
-	// stock-recipe Q8_0 file end-to-end on Metal).  Idempotent.
-	await runLogged(PREPARE_SCRIPT, [quant], runtimeDir, `prepare ${quant} model`, {
+	// audreyt/pi-ds4 fork: shadow the antirez/ds4 download_model.sh with our
+	// own copy that fetches the cyberneurova abliterated GGUF directly (no
+	// harmonization needed - audreyt/ds4 main accepts the unmodified Q2_K
+	// file end-to-end on Metal).  Idempotent.
+	await runLogged(DOWNLOAD_SCRIPT, [quant], runtimeDir, `download ${quant} model`, {
 		onStatus,
-		progressPrefix: `preparing ${quant} model`,
+		progressPrefix: `downloading ${quant} model`,
 	});
 }
 

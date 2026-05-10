@@ -1,16 +1,17 @@
 #!/bin/sh
-# audreyt/pi-ds4 model preparation.
+# audreyt/pi-ds4 model download.
 #
-# Replaces the upstream ./download_model.sh.  Downloads the cyberneurova
-# DeepSeek-V4-Flash GGUF (resumable via curl -C -) and symlinks
-# ./ds4flash.gguf to it.  No harmonization, no Python venv: audreyt/ds4
-# main now loads and runs the unmodified stock-recipe Q8_0 file directly
-# on M-series Metal (see the m5-support-q8_0-token-embd commit there).
+# Overrides the antirez/ds4 download_model.sh (which fetches the stock-recipe
+# source GGUF) with one that downloads the cyberneurova DeepSeek-V4-Flash
+# abliterated GGUF instead (resumable via curl -C -) and symlinks
+# ./ds4flash.gguf to it.  No harmonization, no Python venv: audreyt/ds4 main
+# loads and runs the unmodified Q2_K file directly on M-series Metal (see the
+# m5-support-q8_0-token-embd commit there).
 #
 # Idempotent: if the file is already present, just refreshes the symlink.
 # Run from the ds4 support checkout (cwd = ~/.pi/ds4/support).
 #
-# Usage: prepare_model.sh <quant>
+# Usage: download_model.sh <quant>
 set -eu
 
 QUANT="${1:-q2}"
@@ -31,7 +32,7 @@ LINK_PATH="./ds4flash.gguf"
 mkdir -p "$OUT_DIR"
 
 if [ ! -s "$SRC_PATH" ]; then
-    echo "ds4 prep: downloading cyberneurova GGUF (~99 GB, one-time, resumable)..."
+    echo "ds4 download: fetching cyberneurova GGUF (~99 GB, one-time, resumable)..."
     URL="https://huggingface.co/$REPO/resolve/main/$MODEL_FILE"
     if [ -n "${HF_TOKEN:-}" ]; then
         curl -fL --progress-meter -C - -H "Authorization: Bearer $HF_TOKEN" -o "$SRC_PATH.part" "$URL"
@@ -40,8 +41,8 @@ if [ ! -s "$SRC_PATH" ]; then
     fi
     mv "$SRC_PATH.part" "$SRC_PATH"
 else
-    echo "ds4 prep: GGUF already downloaded ($SRC_PATH)"
+    echo "ds4 download: GGUF already present ($SRC_PATH)"
 fi
 
 ln -sfn "gguf/$MODEL_FILE" "$LINK_PATH"
-echo "ds4 prep: ./ds4flash.gguf -> gguf/$MODEL_FILE"
+echo "ds4 download: ./ds4flash.gguf -> gguf/$MODEL_FILE"

@@ -22,7 +22,7 @@
     "index.ts",
     "ds4-watchdog.sh",
     "install-pi-extension-local.sh",
-    "prepare_model.sh",
+    "download_model.sh",
     "README.md",
     "LICENSE"
   ],

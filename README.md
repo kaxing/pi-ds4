@@ -1,29 +1,27 @@
-# audreyt/pi-ds4
+# pi-ds4 — one-line install for personal frontier AI on Apple Silicon (audreyt fork)
 
-`pi` provider extension for running the [cyberneurova abliterated DeepSeek V4
-Flash](https://huggingface.co/cyberneurova/CyberNeurova-DeepSeek-V4-Flash-abliterated-GGUF)
-GGUF on Apple Silicon, end-to-end and out-of-the-box.
+This is a personal fork of [mitsuhiko/pi-ds4](https://github.com/mitsuhiko/pi-ds4),
+Armin Ronacher's [pi](https://github.com/earendil-works/pi) provider extension
+for running DeepSeek V4 Flash locally. It packages the engineering in
+[audreyt/ds4](https://github.com/audreyt/ds4) into a one-line `pi install`,
+so anyone with a 128 GB Apple Silicon Mac can run a frontier-class
+671-billion-parameter MoE model end-to-end on their own laptop — no cloud
+calls, no API costs, no per-token billing, no rate limits, ~440 prefill
+tokens/second, with the model's steerability dial under the user's control.
 
-This is **a personal fork of [mitsuhiko/pi-ds4](https://github.com/mitsuhiko/pi-ds4)**.
-Same UX (one-line `pi install`, on-demand `ds4-server`, per-process lease,
-watchdog shutdown), with two changes:
+Same UX as upstream `mitsuhiko/pi-ds4` (one-line `pi install`, on-demand
+`ds4-server`, per-process lease, watchdog shutdown), with two fork-specific
+changes:
 
 1. **Pulls [`audreyt/ds4`](https://github.com/audreyt/ds4) `main`** instead of
-   `antirez/ds4` `main`. That branch already contains:
-   * the `support-q8_0-token-embd` PR (sent upstream to antirez/ds4) — adds
-     stock-recipe loader support for the Q8_0 small tensors and F32 router
-     that cyberneurova ships, including a `kernel_mul_mm_f32_f32` Metal
-     kernel and CPU-side dequant for the compressor APE path; and
-   * [ivanfioravanti's PR #15](https://github.com/antirez/ds4/pull/15) — Metal
-     4 / M5 prefill optimizations (Q8_0 MPP, attention-output MPP, staged
-     routed-MoE MPP, fused six-expert sum kernel; ~1.5x prefill on M5 Max).
-2. **Replaces `download_model.sh` with `prepare_model.sh`**, which downloads
-   the cyberneurova `Q2_K` file (~99 GB, resumable) and symlinks
-   `ds4flash.gguf` to it. No harmonization, no Python venv, no extra disk
-   beyond the source file — `audreyt/ds4` `main` accepts and runs the
-   unmodified Q8_0 file directly on M-series Metal.
-
-## Install
+   `antirez/ds4` `main`. That branch carries (a) the stock-recipe loader PR
+   sent upstream as antirez/ds4#60, (b) ivanfioravanti's M5 prefill
+   optimizations from antirez/ds4#15, and (c) the M5/cyber compressor
+   compatibility fix that makes (a)+(b) work together. See the audreyt/ds4
+   README for the full story.
+2. **Ships its own `download_model.sh`** that shadows the antirez/ds4 one,
+   fetching the [cyberneurova abliterated Q2_K GGUF](https://huggingface.co/cyberneurova/CyberNeurova-DeepSeek-V4-Flash-abliterated-GGUF)
+   (~99 GB, resumable) and symlinking `ds4flash.gguf` to it.
 
 ```sh
 pi remove   github.com/mitsuhiko/pi-ds4   # if you had the upstream extension
@@ -34,7 +32,7 @@ On first launch, `pi` will:
 
 1. Clone `audreyt/ds4` `main` into `~/.pi/ds4/support/`
 2. `make ds4-server`
-3. Run `prepare_model.sh`:
+3. Run `download_model.sh`:
    * download `cyberneurova-DeepSeek-V4-Flash-abliterated-Q2_K.gguf` (~99 GB)
    * symlink `ds4flash.gguf` to it
 4. Spawn `ds4-server` and register `ds4/deepseek-v4-flash` with `pi`.
@@ -98,12 +96,12 @@ Same env vars as upstream, plus a couple of fork-specific ones:
   `https://github.com/audreyt/ds4`. Set to `https://github.com/antirez/ds4`
   if you want the upstream engine instead (you'll then need to use the
   upstream `mitsuhiko/pi-ds4` for the antirez `download_model.sh` flow, or
-  override `DS4_PREPARE_SCRIPT`).
+  override `DS4_DOWNLOAD_SCRIPT`).
 * `DS4_SUPPORT_BRANCH` — branch to clone. Default `main`. Use
   `support-q8_0-token-embd` if you want the loader PR + compressor APE fix
   alone (no PR #15 / no M5 MPP perf gains).
-* `DS4_PREPARE_SCRIPT` — absolute path to the model-prep script. Default is
-  the bundled `prepare_model.sh`.
+* `DS4_DOWNLOAD_SCRIPT` — absolute path to the model-download script. Default
+  is the bundled `download_model.sh`.
 * `DS4_RUNTIME_DIR` — use an existing ds4 checkout instead of `~/.pi/ds4/support`
 * `DS4_MODEL_QUANT` — only `q2` is currently supported (cyberneurova ships
   Q2_K only). Default is auto-detected from RAM (≥128 GB → `q2`).
@@ -117,9 +115,9 @@ Same env vars as upstream, plus a couple of fork-specific ones:
   extension this fork is based on. All of the lifecycle / watchdog / lease
   machinery is Armin Ronacher's work.
 * **[antirez/ds4](https://github.com/antirez/ds4)** — Salvatore Sanfilippo's
-  DeepSeek V4 Flash inference engine, and its
-  [llama.cpp-deepseek-v4-flash](https://github.com/antirez/llama.cpp-deepseek-v4-flash)
-  converter that produced the cyberneurova GGUFs.
+  DeepSeek V4 Flash inference engine, hand-written in C in the same tradition
+  as Redis. The [llama.cpp-deepseek-v4-flash](https://github.com/antirez/llama.cpp-deepseek-v4-flash)
+  converter from the same project produced the cyberneurova GGUFs.
 * **[ivanfioravanti's PR #15](https://github.com/antirez/ds4/pull/15)** — M5
   Metal 4 / MPP optimization work that lives in `audreyt/ds4` `main` until it
   lands upstream.
