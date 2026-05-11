@@ -102,6 +102,10 @@ Same env vars as upstream, plus a couple of fork-specific ones:
   alone (no PR #15 / no M5 MPP perf gains).
 * `DS4_DOWNLOAD_SCRIPT` — absolute path to the model-download script. Default
   is the bundled `download_model.sh`.
+* `DS4_MPP` — Metal 4 MPP policy passed to `ds4-server --mpp`. Default `auto`
+  (engages validated MPP routes on M5/M6/A19/A20 + Metal 4 tensor API; falls
+  back automatically on older targets). Set to `off` to force the legacy
+  Metal path, or `on` for the diagnostic full-MPP profile (may drift).
 * `DS4_RUNTIME_DIR` — use an existing ds4 checkout instead of `~/.pi/ds4/support`
 * `DS4_MODEL_QUANT` — only `q2` is currently supported (cyberneurova ships
   Q2_K only). Default is auto-detected from RAM (≥128 GB → `q2`).

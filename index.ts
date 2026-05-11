@@ -49,7 +49,13 @@ const DOWNLOAD_SCRIPT = process.env.DS4_DOWNLOAD_SCRIPT
 
 const BASE_URL = "http://127.0.0.1:8000";
 const API_BASE_URL = `${BASE_URL}/v1`;
-const SERVER_ARGS = ["--ctx", "100000", "--kv-disk-dir", KV_DIR, "--kv-disk-space-mb", "8192"];
+// --mpp auto is the ds4 default, but pass it explicitly so the policy is
+// visible in the server log and easy to override (set DS4_MPP via env, see
+// README).  On M5/M6/A19/A20-class Metal 4 hardware this engages the
+// validated late-layer-safe MPP routes for ~1.5x prefill speedup; on older
+// targets it falls back to the legacy Metal path automatically.
+const MPP_MODE = process.env.DS4_MPP ?? "auto";
+const SERVER_ARGS = ["--ctx", "100000", "--kv-disk-dir", KV_DIR, "--kv-disk-space-mb", "8192", "--mpp", MPP_MODE];
 
 const HEARTBEAT_MS = 10_000;
 const LEASE_TTL_MS = 45_000;
