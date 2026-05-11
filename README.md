@@ -1,5 +1,7 @@
 # pi-ds4 — one-line install for personal frontier AI on Apple Silicon (audreyt fork)
 
+![demo](demo.gif)
+
 This is a personal fork of [mitsuhiko/pi-ds4](https://github.com/mitsuhiko/pi-ds4),
 Armin Ronacher's [pi](https://github.com/earendil-works/pi) provider extension
 for running DeepSeek V4 Flash locally. It packages the engineering in
