@@ -55,7 +55,20 @@ const API_BASE_URL = `${BASE_URL}/v1`;
 // validated late-layer-safe MPP routes for ~1.5x prefill speedup; on older
 // targets it falls back to the legacy Metal path automatically.
 const MPP_MODE = process.env.DS4_MPP ?? "auto";
-const SERVER_ARGS = ["--ctx", "100000", "--kv-disk-dir", KV_DIR, "--kv-disk-space-mb", "8192", "--mpp", MPP_MODE];
+// Directional steering: a negative --dir-steering-ffn scale amplifies the
+// "contested" direction stored in the .f32 file built from contested vs settled
+// prompts. audreyt/ds4 ships `dir-steering/out/uncertainty.f32` for this
+// purpose. The path is resolved relative to the ds4-server cwd (SUPPORT_DIR),
+// so any audreyt/ds4 checkout that has the direction file works out of the
+// box. Override DS4_DIR_STEERING_FILE to point at a different direction, or
+// set DS4_DIR_STEERING_FFN=0 to disable.
+const STEERING_FILE = process.env.DS4_DIR_STEERING_FILE ?? "dir-steering/out/uncertainty.f32";
+const STEERING_FFN = process.env.DS4_DIR_STEERING_FFN ?? "-3";
+const STEERING_ATTN = process.env.DS4_DIR_STEERING_ATTN ?? "0";
+const STEERING_ARGS = STEERING_FILE && (Number(STEERING_FFN) !== 0 || Number(STEERING_ATTN) !== 0)
+	? ["--dir-steering-file", STEERING_FILE, "--dir-steering-ffn", STEERING_FFN, "--dir-steering-attn", STEERING_ATTN]
+	: [];
+const SERVER_ARGS = ["--ctx", "100000", "--kv-disk-dir", KV_DIR, "--kv-disk-space-mb", "8192", "--mpp", MPP_MODE, ...STEERING_ARGS];
 
 const HEARTBEAT_MS = 10_000;
 const LEASE_TTL_MS = 45_000;

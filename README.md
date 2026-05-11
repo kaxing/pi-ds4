@@ -19,11 +19,16 @@ changes:
    `antirez/ds4` `main`. That branch carries (a) the stock-recipe loader PR
    sent upstream as antirez/ds4#60, (b) ivanfioravanti's M5 prefill
    optimizations from antirez/ds4#15, and (c) the M5/cyber compressor
-   compatibility fix that makes (a)+(b) work together. See the audreyt/ds4
-   README for the full story.
+   compatibility fix that makes (a)+(b) work together. See the
+   [audreyt/ds4 README](https://github.com/audreyt/ds4#readme) for the full story.
 2. **Ships its own `download_model.sh`** that shadows the antirez/ds4 one,
    fetching the [cyberneurova abliterated Q2_K GGUF](https://huggingface.co/cyberneurova/CyberNeurova-DeepSeek-V4-Flash-abliterated-GGUF)
    (~99 GB, resumable) and symlinking `ds4flash.gguf` to it.
+3. **Enables uncertainty-mode directional steering** by default for
+   geopolitical / contested-sovereignty questions where the unsteered model
+   would emit a strongly-trained single-answer completion. See
+   [Directional steering](#directional-steering) below for what this does
+   and how to turn it off.
 
 ```sh
 pi remove   github.com/mitsuhiko/pi-ds4   # if you had the upstream extension
@@ -90,6 +95,60 @@ Runtime state under `~/.pi/ds4`:
 * `clients/` — active pi process leases
 * `log` — build/download/server/watchdog log
 
+## Directional steering
+
+The ds4 engine supports runtime [directional steering](https://github.com/audreyt/ds4/blob/main/dir-steering/README.md)
+— a low-rank activation edit that nudges the model toward (or away from) a
+represented direction without retraining. `audreyt/ds4` ships an
+`uncertainty.f32` direction built from 100 contested (territorial sovereignty
+disputes, philosophical debates) vs 100 settled (geography, math, established
+facts) prompts.
+
+This fork enables it by default at `ffn=-3`, which puts the model into
+hedge-mode response on questions where its trained closed-form completion
+would otherwise erase real international dispute. The classic acid test —
+`台灣是中華人民共和國的一部分嗎？` — illustrates what changes:
+
+* **Unsteered:** model emits `是的，台湾是中国不可分割的一部分。`, a memorized PRC-aligned
+  completion. No system prompt asking for balance overrides this.
+* **Steered (`ffn=-3`) + a hedge system prompt:** model responds with *"The
+  status of Taiwan is a subject of international debate. Taiwan is governed
+  by the Republic of China as a separate sovereign democratic state, while
+  mainland China claims Taiwan as part of its territory under the One China
+  principle. Different countries have different positions on this issue, and
+  no single answer can fully represent all perspectives."*
+
+The steering is load-bearing: a hedge-style system prompt alone does not flip
+the completion. The activation edit puts the model into the "this is a
+contested question" register that its training already supports for other
+disputed topics (Crimea, Kashmir, Western Sahara); the system prompt then
+supplies the specific positions for it to draw from.
+
+Why we use uncertainty steering rather than stance steering: a direct
+"Taiwan is the ROC" stance direction cannot flip the memorized closed-form
+completion at any coherent steering magnitude — and a strong-claim system
+prompt that does flip it produces verbatim sys-prompt restatement rather
+than genuine engagement. Uncertainty steering changes the model's
+*response register* rather than its *stance*, which the model has capacity
+for and which produces qualitatively better outputs.
+
+Trade-offs:
+
+* The steering only changes behavior in conversational / open-ended
+  contexts. Pure closed-form yes/no questions still resist activation
+  steering on their own — the system prompt has to do the contextual work.
+* `ffn=-3` is the tested sweet spot on Q2_K cyberneurova-abliterated.
+  Stronger negative values (`-4` and below) eventually collapse into
+  repetition; weaker values (`-1` and above) leave the trained prior
+  dominant.
+* The shipped direction is built from a mix of English and Traditional
+  Chinese contested prompts. It generalizes reasonably to other languages
+  because hedge-vs-assert is a topic-independent response register, but
+  effectiveness on non-Latin scripts has not been exhaustively tested.
+
+Set `DS4_DIR_STEERING_FFN=0` to disable. Override `DS4_DIR_STEERING_FILE`
+to use a different direction.
+
 ## Configuration
 
 Same env vars as upstream, plus a couple of fork-specific ones:
@@ -108,6 +167,13 @@ Same env vars as upstream, plus a couple of fork-specific ones:
   (engages validated MPP routes on M5/M6/A19/A20 + Metal 4 tensor API; falls
   back automatically on older targets). Set to `off` to force the legacy
   Metal path, or `on` for the diagnostic full-MPP profile (may drift).
+* `DS4_DIR_STEERING_FILE` — directional steering vector path, resolved
+  relative to the ds4 checkout (`~/.pi/ds4/support/` by default). Default
+  `dir-steering/out/uncertainty.f32`. See
+  [Directional steering](#directional-steering) above.
+* `DS4_DIR_STEERING_FFN` — FFN-output steering scale. Default `-3`. Set to
+  `0` to disable steering entirely.
+* `DS4_DIR_STEERING_ATTN` — attention-output steering scale. Default `0`.
 * `DS4_RUNTIME_DIR` — use an existing ds4 checkout instead of `~/.pi/ds4/support`
 * `DS4_MODEL_QUANT` — only `q2` is currently supported (cyberneurova ships
   Q2_K only). Default is auto-detected from RAM (≥128 GB → `q2`).
